@@ -15,5 +15,5 @@
 
 [Comprehensive NestJS Course](https://www.freecodecamp.org/news/comprehensive-nestjs-course/) 
 
-
+[Nest.js Full Course for Beginners | Complete All-in-One Tutorial | 3 Hours](https://www.youtube.com/watch?v=8_X0nSrzrCw)
 
