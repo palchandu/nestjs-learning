@@ -17,3 +17,9 @@
 
 [Nest.js Full Course for Beginners | Complete All-in-One Tutorial | 3 Hours](https://www.youtube.com/watch?v=8_X0nSrzrCw)
 
+## NestJs Validation using [Pipe](https://docs.nestjs.com/pipes#custom-pipes)
+ - Learning Resource
+     - [NestJs : NestJs Validation Explained in Hindi](https://www.youtube.com/watch?v=ZR5WoojlOTA&list=PLVo1k_VwkKMyxkNyMFTtcMcfNHA3xKjZ0&index=9)
+ - Package required for validation
+     - [class-transformer](https://www.npmjs.com/package/class-transformer)
+     - [class-validator](https://www.npmjs.com/package/class-validator)
