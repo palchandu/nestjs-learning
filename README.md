@@ -579,3 +579,277 @@ POST /api/user
 🚀 **This hybrid approach gives you flexibility, consistency, and maintainability.**  
 
 Would you like an example of **custom exception handling for validation errors**? 🚀
+
+
+# **📌 Where to Put `utils` and `helpers` in a NestJS Project?**  
+
+In a **scalable NestJS project**, reusable **utility** and **helper functions** should be **kept separate from the business logic** to improve **code reusability and maintainability**.  
+
+---
+
+## **✅ Recommended Folder Structure**
+```
+📦 my-nestjs-app
+ ┣ 📂 src/
+ ┃ ┣ 📂 api/                      # API service layer (External APIs)
+ ┃ ┣ 📂 common/                   # Shared modules, decorators, guards, interceptors
+ ┃ ┣ 📂 config/                   # Config files (DB, ENV, Constants)
+ ┃ ┣ 📂 modules/                  # Feature modules (user, auth, products)
+ ┃ ┣ 📂 utils/                     # Reusable utility functions
+ ┃ ┣ 📂 helpers/                   # Helper functions (feature-specific)
+ ┃ ┣ 📂 middleware/                # Express middleware (if needed)
+ ┃ ┣ 📂 filters/                   # Global exception filters
+ ┃ ┣ 📂 pipes/                     # Custom validation pipes
+ ┃ ┣ 📂 guards/                    # Authentication & Authorization guards
+ ┃ ┣ 📜 main.ts                    # App entry point
+ ┃ ┗ 📜 app.module.ts               # Main App Module
+ ┣ 📜 package.json
+ ┗ 📜 .env
+```
+
+### **📌 Where to Place Utility & Helper Functions?**
+| **Folder** | **Purpose** | **Examples** |
+|------------|------------|--------------|
+| `src/utils/` | **General-purpose reusable functions** (used across modules) | `formatDate()`, `generateUUID()`, `hashPassword()` |
+| `src/helpers/` | **Feature-specific functions** (used inside a module) | `validateUser()`, `calculateDiscount()`, `transformResponse()` |
+
+---
+
+## **✅ 1. `utils/` → General Utility Functions (Used Everywhere)**
+These are **generic functions** that **can be used across the entire app**, regardless of the module.
+
+📂 **Example File: `src/utils/date.util.ts`**
+```ts
+export function formatDate(date: Date): string {
+  return date.toISOString().split('T')[0]; // Returns YYYY-MM-DD
+}
+```
+
+📂 **Example File: `src/utils/hash.util.ts`**
+```ts
+import * as bcrypt from 'bcrypt';
+
+export async function hashPassword(password: string): Promise<string> {
+  const salt = await bcrypt.genSalt(10);
+  return bcrypt.hash(password, salt);
+}
+
+export async function comparePassword(password: string, hash: string): Promise<boolean> {
+  return bcrypt.compare(password, hash);
+}
+```
+
+✅ **Usage in `UserService`**
+```ts
+import { hashPassword } from '../utils/hash.util';
+
+async registerUser(userDto: RegisterUserDto) {
+  const hashedPassword = await hashPassword(userDto.password);
+  return this.userModel.create({ ...userDto, password: hashedPassword });
+}
+```
+
+---
+
+## **✅ 2. `helpers/` → Module-Specific Helper Functions**
+These functions are **only relevant to a specific module** and should be placed inside the respective module.
+
+📂 **Example File: `src/modules/user/helpers/user.helper.ts`**
+```ts
+export function formatUserResponse(user: any) {
+  return {
+    id: user._id,
+    name: user.name,
+    email: user.email,
+    createdAt: user.createdAt.toISOString(),
+  };
+}
+```
+
+✅ **Usage in `UserService`**
+```ts
+import { formatUserResponse } from './helpers/user.helper';
+
+async getUserProfile(id: string) {
+  const user = await this.userModel.findById(id);
+  return formatUserResponse(user);
+}
+```
+
+---
+
+## **✅ 3. `common/` → Shared Modules, Guards, Decorators**
+If your **utility function is a reusable class or decorator**, place it inside the **`common/` folder**.
+
+📂 **Example File: `src/common/decorators/current-user.decorator.ts`**
+```ts
+import { createParamDecorator, ExecutionContext } from '@nestjs/common';
+
+export const CurrentUser = createParamDecorator((data, ctx: ExecutionContext) => {
+  const request = ctx.switchToHttp().getRequest();
+  return request.user; // Retrieves the authenticated user
+});
+```
+
+✅ **Usage in `UserController`**
+```ts
+@Get('profile')
+getProfile(@CurrentUser() user) {
+  return user;
+}
+```
+
+---
+
+## **🎯 Summary: Best Folder Structure for Utilities & Helpers**
+| **Folder** | **Purpose** | **Examples** |
+|------------|------------|--------------|
+| **`src/utils/`** | General utilities used across the app | `formatDate()`, `hashPassword()`, `generateUUID()` |
+| **`src/helpers/`** | Module-specific helper functions | `formatUserResponse()`, `calculateDiscount()` |
+| **`src/common/`** | Reusable decorators, guards, interceptors | `@CurrentUser()`, `AuthGuard` |
+
+✅ **Best Practice:**  
+- **Use `utils/` for generic, app-wide reusable functions.**  
+- **Use `helpers/` inside modules for feature-specific functions.**  
+- **Use `common/` for decorators, guards, and shared modules.**  
+
+🚀 **Would you like a boilerplate template with this structure?**
+
+# **📌 Configure NestJS CLI to Generate Files Inside `modules/` Folder**  
+
+By default, when you run the **NestJS CLI (`nest g resource`)**, it generates files inside `src/`. However, you can configure it to place **resources (modules, controllers, services, etc.) inside the `modules/` directory**, and **guards, pipes, filters inside `common/`**.
+
+---
+
+## **✅ Step 1: Modify `nest-cli.json` to Change Default Paths**
+### **Modify `nest-cli.json`**
+📂 **`nest-cli.json`**
+```json
+{
+  "collection": "@nestjs/schematics",
+  "sourceRoot": "src",
+  "generateOptions": {
+    "module": "modules",      // Place all resources inside `modules/`
+    "controller": "modules",  // Controllers go inside `modules/`
+    "service": "modules",     // Services go inside `modules/`
+    "guard": "common/guards", // Guards go inside `common/guards/`
+    "pipe": "common/pipes",   // Pipes go inside `common/pipes/`
+    "filter": "common/filters", // Filters go inside `common/filters/`
+    "interceptor": "common/interceptors", // Interceptors go inside `common/interceptors/`
+    "decorator": "common/decorators" // Custom decorators go inside `common/decorators/`
+  }
+}
+```
+
+✅ **Now, whenever you generate a resource, it will be placed inside the correct folder.**  
+
+---
+
+## **✅ Step 2: Verify the Configuration with Examples**
+### **📌 1. Create a New Resource (`nest g resource user`)**
+```sh
+nest g resource user
+```
+✅ **Before (`Default NestJS CLI Behavior`):**
+```
+src/
+ ┣ 📂 user/
+ ┃ ┣ 📜 user.module.ts
+ ┃ ┣ 📜 user.controller.ts
+ ┃ ┣ 📜 user.service.ts
+ ┃ ┗ 📜 dto/
+```
+✅ **After (`Configured to Use modules/`):**
+```
+src/
+ ┣ 📂 modules/
+ ┃ ┣ 📂 user/
+ ┃ ┃ ┣ 📜 user.module.ts
+ ┃ ┃ ┣ 📜 user.controller.ts
+ ┃ ┃ ┣ 📜 user.service.ts
+ ┃ ┃ ┗ 📜 dto/
+```
+👉 **Now, all generated modules go inside `src/modules/`.**
+
+---
+
+### **📌 2. Generate a Guard (`nest g guard auth`)**
+```sh
+nest g guard auth
+```
+✅ **Before (`Default NestJS CLI Behavior`):**
+```
+src/
+ ┣ 📜 auth.guard.ts
+```
+✅ **After (`Configured to Use common/guards/`):**
+```
+src/
+ ┣ 📂 common/
+ ┃ ┗ 📂 guards/
+ ┃ ┃ ┣ 📜 auth.guard.ts
+```
+👉 **Now, all generated guards go inside `common/guards/`.**
+
+---
+
+### **📌 3. Generate a Pipe (`nest g pipe validation`)**
+```sh
+nest g pipe validation
+```
+✅ **After (`Configured to Use common/pipes/`):**
+```
+src/
+ ┣ 📂 common/
+ ┃ ┗ 📂 pipes/
+ ┃ ┃ ┣ 📜 validation.pipe.ts
+```
+👉 **Now, all pipes are placed inside `common/pipes/`.**
+
+---
+
+### **📌 4. Generate a Custom Decorator (`nest g decorator current-user`)**
+```sh
+nest g decorator current-user
+```
+✅ **After (`Configured to Use common/decorators/`):**
+```
+src/
+ ┣ 📂 common/
+ ┃ ┗ 📂 decorators/
+ ┃ ┃ ┣ 📜 current-user.decorator.ts
+```
+👉 **Now, all decorators are placed inside `common/decorators/`.**
+
+---
+
+## **✅ Step 3: Test and Validate**
+After modifying `nest-cli.json`, **restart your NestJS CLI** and run a test command:
+```sh
+nest g module products
+```
+✅ **Expected Result:**
+```
+src/
+ ┣ 📂 modules/
+ ┃ ┣ 📂 products/
+ ┃ ┃ ┣ 📜 products.module.ts
+```
+🎯 **Now, all new modules, controllers, services, and other resources will follow this structured folder organization automatically!**  
+
+---
+
+## **✅ Final Summary**
+| **Resource** | **Default Location** | **New Location (After Configuring `nest-cli.json`)** |
+|-------------|----------------------|------------------------------------|
+| **Modules (`nest g module <name>`)** | `src/` | `src/modules/` |
+| **Controllers (`nest g controller <name>`)** | `src/` | `src/modules/` |
+| **Services (`nest g service <name>`)** | `src/` | `src/modules/` |
+| **Guards (`nest g guard <name>`)** | `src/` | `src/common/guards/` |
+| **Pipes (`nest g pipe <name>`)** | `src/` | `src/common/pipes/` |
+| **Filters (`nest g filter <name>`)** | `src/` | `src/common/filters/` |
+| **Interceptors (`nest g interceptor <name>`)** | `src/` | `src/common/interceptors/` |
+| **Decorators (`nest g decorator <name>`)** | `src/` | `src/common/decorators/` |
+
+🚀 **Would you like a sample GitHub boilerplate with this setup?**
+
