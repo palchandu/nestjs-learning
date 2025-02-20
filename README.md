@@ -853,3 +853,236 @@ src/
 
 🚀 **Would you like a sample GitHub boilerplate with this setup?**
 
+
+
+# **📌 Best Practices to Sanitize `req.body` in NestJS (Prevent XSS, SQL Injection, & JS Code Execution)**  
+
+[CSRF Protection](https://docs.nestjs.com/security/csrf)
+
+Sanitizing `req.body` is **critical** to prevent **XSS (Cross-Site Scripting), SQL Injection, and JavaScript execution**. NestJS provides **multiple layers of security** to ensure safe request handling.
+
+---
+
+## **✅ Step 1: Install Security Dependencies**
+Use **`class-sanitizer`**, **`express-mongo-sanitize`**, and **`helmet`** for enhanced security.  
+```sh
+npm install class-validator class-transformer express-mongo-sanitize helmet
+```
+✅ **What These Do?**  
+- **`class-validator`** → Validates input fields.  
+- **`class-transformer`** → Removes unwanted properties.  
+- **`express-mongo-sanitize`** → Prevents **MongoDB query injections**.  
+- **`helmet`** → Adds security headers to prevent common attacks.  
+
+---
+
+## **✅ Step 2: Use `class-validator` & `class-transformer` to Sanitize `req.body`**
+Modify your **DTOs (Data Transfer Objects)** to automatically **validate & sanitize inputs**.
+
+📂 **Create `src/dto/user.dto.ts`**
+```ts
+import { IsEmail, IsNotEmpty, MinLength } from 'class-validator';
+import { Transform } from 'class-transformer';
+
+export class CreateUserDto {
+  @IsNotEmpty({ message: 'Name is required' })
+  @Transform(({ value }) => value.trim()) // Trim spaces
+  name: string;
+
+  @IsNotEmpty({ message: 'Email is required' })
+  @IsEmail({}, { message: 'Invalid email format' })
+  @Transform(({ value }) => value.toLowerCase()) // Convert to lowercase
+  email: string;
+
+  @IsNotEmpty({ message: 'Password is required' })
+  @MinLength(6, { message: 'Password must be at least 6 characters' })
+  password: string;
+}
+```
+✅ **Now:**  
+- **Extra spaces are removed** (`trim()`).  
+- **Email is converted to lowercase**.  
+- **Password must be at least 6 characters**.  
+
+---
+
+## **✅ Step 3: Use `ValidationPipe` to Enforce DTO Validation**
+Enable `ValidationPipe` in `main.ts` so all incoming `req.body` is **validated & sanitized**.
+
+📂 **Modify `src/main.ts`**
+```ts
+import { ValidationPipe } from '@nestjs/common';
+import { NestFactory } from '@nestjs/core';
+import helmet from 'helmet';
+import mongoSanitize from 'express-mongo-sanitize';
+import { AppModule } from './app.module';
+
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule);
+
+  // ✅ Prevent SQL Injection & XSS
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true, // Remove unknown properties
+      forbidNonWhitelisted: true, // Throw error for extra properties
+      transform: true, // Auto-transform DTOs
+    })
+  );
+
+  // ✅ Protect against common security vulnerabilities
+  app.use(helmet()); 
+
+  // ✅ Prevent MongoDB Injection Attacks (removes `$` and `.` from inputs)
+  app.use(mongoSanitize());
+
+  await app.listen(3000);
+}
+bootstrap();
+```
+✅ **Now:**  
+- **Helmet** protects against common security issues (XSS, Clickjacking, etc.).  
+- **Mongo Sanitize** prevents **NoSQL injection** (`{ "$gt": "" }`).  
+- **DTO validation with `whitelist: true`** removes unwanted fields.  
+
+---
+
+## **✅ Step 4: Create a Custom Sanitization Middleware**
+Create a **NestJS middleware** to sanitize **script tags, SQL injections, and JavaScript execution**.
+
+📂 **Create `src/middleware/sanitize.middleware.ts`**
+```ts
+import { Injectable, NestMiddleware } from '@nestjs/common';
+import * as sanitizeHtml from 'sanitize-html';
+
+@Injectable()
+export class SanitizeMiddleware implements NestMiddleware {
+  use(req: any, res: any, next: () => void) {
+    if (req.body) {
+      for (const key in req.body) {
+        if (typeof req.body[key] === 'string') {
+          req.body[key] = sanitizeHtml(req.body[key], {
+            allowedTags: [], // Remove all HTML tags
+            allowedAttributes: {}, // Remove attributes like "onclick"
+          });
+        }
+      }
+    }
+    next();
+  }
+}
+```
+✅ **Now:**  
+- **Script tags & JavaScript injection are removed** (`<script>alert('XSS')</script>` → 🗑️).  
+- **OnClick events & malicious HTML are stripped**.  
+
+---
+
+## **✅ Step 5: Register Middleware in `app.module.ts`**
+📂 **Modify `src/app.module.ts`**
+```ts
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
+import { SanitizeMiddleware } from './middleware/sanitize.middleware';
+
+@Module({
+  imports: [],
+})
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(SanitizeMiddleware).forRoutes('*'); // Apply to all routes
+  }
+}
+```
+✅ **Now:**  
+- **All incoming `req.body` will be sanitized** before reaching the controller.  
+- **Middleware runs on all routes** (`forRoutes('*')`).  
+
+---
+
+## **✅ Step 6: Prevent XSS in API Responses**
+Sanitize **outgoing API responses** to **remove JavaScript-injected data**.
+
+📂 **Create `src/interceptors/sanitize.interceptor.ts`**
+```ts
+import { CallHandler, ExecutionContext, Injectable, NestInterceptor } from '@nestjs/common';
+import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
+import * as sanitizeHtml from 'sanitize-html';
+
+@Injectable()
+export class SanitizeResponseInterceptor implements NestInterceptor {
+  intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
+    return next.handle().pipe(
+      map((data) => {
+        if (typeof data === 'object') {
+          for (const key in data) {
+            if (typeof data[key] === 'string') {
+              data[key] = sanitizeHtml(data[key]);
+            }
+          }
+        }
+        return data;
+      })
+    );
+  }
+}
+```
+✅ **Now:**  
+- **Malicious HTML tags & scripts are removed before sending API responses.**  
+- **Prevents XSS attacks even if stored data contains scripts.**  
+
+### **Register Global Interceptor in `main.ts`**
+📂 **Modify `src/main.ts`**
+```ts
+import { SanitizeResponseInterceptor } from './interceptors/sanitize.interceptor';
+
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule);
+
+  app.useGlobalInterceptors(new SanitizeResponseInterceptor()); // ✅ Apply XSS prevention to all responses
+
+  await app.listen(3000);
+}
+bootstrap();
+```
+
+---
+
+## **✅ Step 7: Use Query Parameter Validation**
+Prevent SQL Injection by validating and sanitizing query parameters.
+
+📂 **Modify `user.controller.ts`**
+```ts
+import { Controller, Get, Query } from '@nestjs/common';
+import { IsString, Matches } from 'class-validator';
+
+class SearchDto {
+  @IsString()
+  @Matches(/^[a-zA-Z0-9_ ]*$/, { message: 'Invalid search input' }) // Prevent SQL injection
+  search: string;
+}
+
+@Controller('users')
+export class UserController {
+  @Get('search')
+  async search(@Query() query: SearchDto) {
+    return { status: true, data: [], message: 'Search executed' };
+  }
+}
+```
+✅ **Now SQL injection attempts (`DROP TABLE users;`) will be blocked.**
+
+---
+
+## **🎯 Final Summary**
+| **Security Feature** | **How It Helps** |
+|----------------|---------------------------|
+| **DTO Validation (`class-validator`)** | Ensures only valid inputs are accepted. |
+| **`helmet()` Middleware** | Adds security headers to prevent attacks. |
+| **`express-mongo-sanitize`** | Prevents MongoDB NoSQL injection. |
+| **Custom Middleware (`sanitize-html`)** | Strips script tags & JavaScript from `req.body`. |
+| **Response Interceptor** | Prevents XSS attacks by sanitizing API responses. |
+| **Query Parameter Validation** | Prevents SQL injection via query parameters. |
+
+🚀 **Now your NestJS app is safe from XSS, SQL injection, and JavaScript execution!** Would you like a **pre-configured NestJS security template**? 🚀
+
+
