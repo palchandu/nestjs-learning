@@ -27,6 +27,7 @@
  - Package required for validation
      - [class-transformer](https://www.npmjs.com/package/class-transformer)
      - [class-validator](https://www.npmjs.com/package/class-validator)
+     - [Class-validator - validate array of objects](https://stackoverflow.com/questions/58343262/class-validator-validate-array-of-objects)
 
 - **NestJS - How to create nested schema with decorators**
     - [Nested Schema](https://stackoverflow.com/questions/62762492/nestjs-how-to-create-nested-schema-with-decorators)
