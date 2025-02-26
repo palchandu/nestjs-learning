@@ -1090,3 +1090,146 @@ export class UserController {
 🚀 **Now your NestJS app is safe from XSS, SQL injection, and JavaScript execution!** Would you like a **pre-configured NestJS security template**? 🚀
 
 
+## Updating Nested Array Mongoose
+
+To **add a new section** inside the `menus.sections` array and **add a new item** inside a specific section's `items` array, use the **MongoDB `$push` operator**.
+
+---
+
+## **1️⃣ Add a New Section to `menus.sections`**
+```js
+db.menus.updateOne(
+  { _id: ObjectId("67bee8de2fa99a9626ae9d14") },  // Find the menu
+  { 
+    $push: { 
+      "menus.0.sections": {   // Add a new section inside the first menu
+        _id: ObjectId(),  // Generate a new ObjectId for the section
+        labels: [
+          {
+            displayName: "Desserts",
+            description: "Sweet and delicious treats",
+            languageCode: "en"
+          }
+        ],
+        items: []  // Initially empty, items will be added later
+      }
+    }
+  }
+);
+```
+✅ This adds a **new section** to the first menu inside the `menus` array.
+
+---
+
+## **2️⃣ Add a New Item to a Specific Section**
+To add a new item inside an **existing section’s `items` array`**, you need to match the **menu and section `_id`**.
+
+```js
+db.menus.updateOne(
+  { 
+    _id: ObjectId("67bee8de2fa99a9626ae9d14"),  // Find the menu
+    "menus.sections._id": ObjectId("NEW_SECTION_ID")  // Find the correct section
+  },
+  { 
+    $push: { 
+      "menus.$.sections.$[section].items": {  // Add item to the matched section
+        _id: ObjectId(),  // Generate a new ObjectId for the item
+        labels: [
+          {
+            displayName: "Chocolate Cake",
+            description: "Rich and moist chocolate cake",
+            languageCode: "en"
+          }
+        ],
+        attributes: {
+          price: {
+            currencyCode: "USD",
+            units: "8",
+            nanos: 0
+          },
+          spiciness: "NONE",
+          allergen: ["Gluten", "Dairy"],
+          dietaryRestriction: ["Vegetarian"],
+          servesNumPeople: 1
+        },
+        options: []
+      }
+    }
+  },
+  { arrayFilters: [{ "section._id": ObjectId("NEW_SECTION_ID") }] } // Filters to update only the correct section
+);
+```
+ou like a function in **Mongoose/NestJS** to handle this dynamically? 🚀
+
+### **What is `arrayFilters` in MongoDB?**  
+
+`arrayFilters` is an **option used in MongoDB's update operations** to target specific **elements inside arrays** when updating **nested array elements**.  
+
+---
+
+### **🔍 Why Use `arrayFilters`?**  
+In MongoDB, when updating a nested array (like `menus.sections.items`), you need to ensure that **only the correct section gets updated**.  
+
+By default, `$push` without `arrayFilters` might **not know which section** to add the new item to.  
+So, `arrayFilters` **filters the correct section** to update.
+
+---
+
+### **🛠 Breakdown of `arrayFilters` in Your Query**
+```js
+db.menus.updateOne(
+  { 
+    _id: ObjectId("67bee8de2fa99a9626ae9d14"),  // Find the menu
+    "menus.sections._id": ObjectId("NEW_SECTION_ID")  // Find the correct section
+  },
+  { 
+    $push: { 
+      "menus.$.sections.$[section].items": {  // Add item to the matched section
+        _id: ObjectId(),  
+        labels: [
+          {
+            displayName: "Chocolate Cake",
+            description: "Rich and moist chocolate cake",
+            languageCode: "en"
+          }
+        ],
+        attributes: {
+          price: {
+            currencyCode: "USD",
+            units: "8",
+            nanos: 0
+          },
+          spiciness: "NONE",
+          allergen: ["Gluten", "Dairy"],
+          dietaryRestriction: ["Vegetarian"],
+          servesNumPeople: 1
+        },
+        options: []
+      }
+    }
+  },
+  { arrayFilters: [{ "section._id": ObjectId("NEW_SECTION_ID") }] } // Filters to update only the correct section
+);
+```
+
+---
+
+### **📌 Explanation**
+1. **Finds the menu document** where `_id = "67bee8de2fa99a9626ae9d14"`.
+2. **Finds the correct section** where `menus.sections._id = "NEW_SECTION_ID"`.
+3. **Uses `$push`** to add a new `item` inside `sections.items`.
+4. **`arrayFilters`:**  
+   - `"section._id": ObjectId("NEW_SECTION_ID")`  
+   - This means: **Find the section where `_id = NEW_SECTION_ID` and update only that one**.
+
+---
+
+### **🎯 Without `arrayFilters`, what happens?**
+If you **don't use `arrayFilters`**, MongoDB **does not know which section** to update, leading to errors like:
+```
+Updating the path 'menus.sections.items' would create a conflict at 'menus.sections'
+```
+or **incorrect updates** in all sections.
+
+---
+
