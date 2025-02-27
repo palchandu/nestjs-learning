@@ -33,6 +33,9 @@
     - [Nested Schema](https://stackoverflow.com/questions/62762492/nestjs-how-to-create-nested-schema-with-decorators)
     - [How to write down nested schemas for mongoose using NestJS](https://stackoverflow.com/questions/67848830/how-to-write-down-nested-schemas-for-mongoose-using-nestjs-nomenclature)
     - [Mongoose Nested Schemas within Arrays](https://github.com/nestjs/mongoose/issues/839)
+ 
+-  **Deploy NestJs Project on Nginx**
+    - [How to Deploy a NestJS Application with Nginx on Ubuntu VPS](https://www.digitalocean.com/community/tutorials/how-to-deploy-a-nestjs-application-with-nginx-on-ubuntu)
 # **📌 Validating `req.body` in NestJS**
 In NestJS, you can validate the `req.body` (incoming request payload) using **DTOs (Data Transfer Objects)** and **Pipes** with `class-validator` and `class-transformer`.
 
